@@ -425,7 +425,7 @@ if __name__=="__main__":
     elif mode=="-static":
         print "model architecture: CNN-static"
         non_static=False
-    execfile("conv_net_classes.py")
+    exec(open('conv_net_classes.py').read())                #execfile("conv_net_classes.py")
     if word_vectors=="-rand":
         print "using: random vectors"
         U = W2
