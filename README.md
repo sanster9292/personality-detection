@@ -11,7 +11,7 @@ This code implements the model discussed in [Deep Learning-Based Document Modeli
 
 ## Requirements
 
--   Python 2.7
+-   Python 2.7....This repository is currently being updated to Python 3.6
 -   Theano 0.7 (Tested)
 -   Pandas 18.0 (Tested)
 -   Pre-trained [GoogleNews word2vec](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit) vector
