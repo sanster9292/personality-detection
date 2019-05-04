@@ -442,7 +442,8 @@ if __name__=="__main__":
 #     emof=open("Emotion_Lexicon.csv","rb")
 #     csvf=csv.reader(emof, delimiter=',',quotechar='"')
     first_line=True
-    with open("Emotion_Lexicon.csv",'r',  encoding = 'cp1252') as emof:
+    # if running on a local machine, you will have to provide the absolute path to Emotion_Lexicon.csv file. 
+    with open("Emotion_Lexicon.csv",'r',  encoding = 'cp1252') as emof: 
         for line in csvf:
             if first_line:
                 first_line=False
