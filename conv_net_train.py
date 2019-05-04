@@ -439,18 +439,17 @@ if __name__=="__main__":
 
     charged_words=[]
 
-    emof=open("Emotion_Lexicon.csv","rb")
-    csvf=csv.reader(emof, delimiter=',',quotechar='"')
+#     emof=open("Emotion_Lexicon.csv","rb")
+#     csvf=csv.reader(emof, delimiter=',',quotechar='"')
     first_line=True
-
-    for line in csvf:
-        if first_line:
-            first_line=False
-            continue
-        if line[11]=="1":
-            charged_words.append(line[0])
-
-    emof.close()
+    with open("Emotion_Lexicon.csv",'r',  encoding = 'cp1252') as emof:
+        for line in csvf:
+            if first_line:
+                first_line=False
+                continue
+            if line[11]=="1":
+              charged_words.append(line[0])
+        emof.close()
 
     charged_words=set(charged_words)
 
