@@ -81,10 +81,11 @@ def get_W(model_vocab, vocab, w2v, k=300):
         W[i] = w2v[word]
         word_idx_map[word] = i
         i += 1
-        
+         
         #Printing how many words left to complete the matrix:
         if i%500000 == 0:
             print('Words Appended :' + str(i) + '/3,000,000')
+            break
     return W, word_idx_map
 
 def add_unknown_words(w2v, model_vocab, vocab, min_df=1, k=300):
@@ -92,12 +93,16 @@ def add_unknown_words(w2v, model_vocab, vocab, min_df=1, k=300):
     For words that occur in at least min_df documents, create a separate word vector.
     0.25 is chosen so the unknown vectors have (approximately) same variance as pre-trained ones
     """
-    l = len(vocab)
-    for j, word in enumerate(vocab):
-        if word not in model_vocab and vocab[word] >= min_df:
+    #Length of words that will be added:
+    main_list = np.setdiff1d(vocab.keys(), model_vocab)
+    l = len(main_list)
+    
+    #Iterating through the list of words and adding to model 
+    for j, word in enumerate(main_list):
+        if vocab[word] >= min_df:
             w2v.vocab[word] = np.random.uniform(-0.25,0.25,k)
         
-        #Printing to see progress
+        #This is not necessarily correct 
         if j%(l/20) == 0:
             print('Words Appended :' + str(j) + '/' + str(l))
         
@@ -168,13 +173,17 @@ if __name__=="__main__":
     print "word2vec loaded!"
     model_vocab = w2v.vocab.keys()
     print "num words already in word2vec: " + str(len(model_vocab))
-    #%%
+    
     #Adding unknown words from the vocab into the word vector
     add_unknown_words(w2v, model_vocab, vocab)
-    #%%
-    #Getting the 300xlen(vocab) word matrix
-    W, word_idx_map = get_W(model_vocab, vocab, w2v)
+    
+    #Getting the 300 x len(vocab) word matrix
+    W, word_idx_map = get_W(model_vocab, vocab, w2v) #This takes a long time to run 
+    
+    #Retrieving mairesse features
     mairesse = get_mairesse_features(mairesse_file)
-    cPickle.dump([revs, W, W2, word_idx_map, vocab, mairesse], open("essays_mairesse.p", "wb"))
+    
+    #Appending all to a pickle file
+    cPickle.dump([revs, W, word_idx_map, vocab, mairesse], open("essays_mairesse.p", "wb"))
     print "dataset created!"
 
