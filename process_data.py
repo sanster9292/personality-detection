@@ -5,8 +5,7 @@ from collections import defaultdict
 import sys, re
 import pandas as pd
 import csv
-import getpass
-
+import gensim
 
 def build_data_cv(datafile, cv=10, clean_string=True):
     """
@@ -15,7 +14,7 @@ def build_data_cv(datafile, cv=10, clean_string=True):
     revs = []
     vocab = defaultdict(float)
 
-    with open(datafile, "r", encoding = 'cp1252') as csvf:
+    with open(datafile, "r") as csvf: #encoding = 'cp1252'
         csvreader=csv.reader(csvf,delimiter=',',quotechar='"')
         first_line=True
         for line in csvreader:
@@ -69,54 +68,39 @@ def build_data_cv(datafile, cv=10, clean_string=True):
 
     return revs, vocab
 
-def get_W(word_vecs, k=300):
+def get_W(model_vocab, vocab, w2v, k=300):
     """
     Get word matrix. W[i] is the vector for word indexed by i
     """
-    vocab_size = len(word_vecs)
+    vocab_size = len(model_vocab)
     word_idx_map = dict()
     W = np.zeros(shape=(vocab_size+1, k), dtype=theano.config.floatX)
     W[0] = np.zeros(k, dtype=theano.config.floatX)
     i = 1
-    for word in word_vecs:
-        W[i] = word_vecs[word]
+    for word in model_vocab:
+        W[i] = w2v[word]
         word_idx_map[word] = i
         i += 1
+        
+        #Printing how many words left to complete the matrix:
+        if i%500000 == 0:
+            print('Words Appended :' + str(i) + '/3,000,000')
     return W, word_idx_map
 
-def load_bin_vec(fname, vocab):
-    """
-    Loads 300x1 word vecs from Google (Mikolov) word2vec
-    """
-    word_vecs = {}
-    with open(fname, "rb") as f:
-        header = f.readline()
-        vocab_size, layer1_size = map(int, header.split())
-        binary_len = np.dtype(theano.config.floatX).itemsize * layer1_size
-        for line in xrange(vocab_size):
-            word = []
-            while True:
-                ch = f.read(1)
-                if ch == ' ':
-                    word = ''.join(word)
-                    break
-                if ch != '\n':
-                    word.append(ch)
-            if word in vocab:
-               word_vecs[word] = np.fromstring(f.read(binary_len), dtype=theano.config.floatX)
-            else:
-                f.read(binary_len)
-    return word_vecs
-
-def add_unknown_words(word_vecs, vocab, min_df=1, k=300):
+def add_unknown_words(w2v, model_vocab, vocab, min_df=1, k=300):
     """
     For words that occur in at least min_df documents, create a separate word vector.
     0.25 is chosen so the unknown vectors have (approximately) same variance as pre-trained ones
     """
-    for word in vocab:
-        if word not in word_vecs and vocab[word] >= min_df:
-            word_vecs[word] = np.random.uniform(-0.25,0.25,k)
-            print word
+    l = len(vocab)
+    for j, word in enumerate(vocab):
+        if word not in model_vocab and vocab[word] >= min_df:
+            w2v.vocab[word] = np.random.uniform(-0.25,0.25,k)
+        
+        #Printing to see progress
+        if j%(l/20) == 0:
+            print('Words Appended :' + str(j) + '/' + str(l))
+        
 
 def clean_str(string, TREC=False):
     """
@@ -155,27 +139,41 @@ def get_mairesse_features(file_name):
             feats[line[0]]=[float(f) for f in line[1:]]
     return feats
 
+def convert_keys_to_string(dictionary):
+    """Recursively converts dictionary keys to strings."""
+    if not isinstance(dictionary, dict):
+        return dictionary
+    return dict((str(k), convert_keys_to_string(v)) 
+        for k, v in dictionary.items())
+
+
 if __name__=="__main__":
-    w2v_file = sys.argv[1]
-    data_folder = sys.argv[2]
-    mairesse_file = sys.argv[3]
+    #data_folder = sys.argv[1]
+    data_folder = 'essays.csv'
+    #mairesse_file = sys.argv[2]
+    mairesse_file = 'mairesse.csv'
     print "loading data...",
     revs, vocab = build_data_cv(data_folder, cv=10, clean_string=True)
+    vocab = convert_keys_to_string(vocab)
     num_words=pd.DataFrame(revs)["num_words"]
     max_l = np.max(num_words)
     print "data loaded!"
     print "number of status: " + str(len(revs))
     print "vocab size: " + str(len(vocab))
     print "max sentence length: " + str(max_l)
-    print "loading word2vec vectors...",
-    w2v = load_bin_vec(w2v_file, vocab)
+    print "loading word2vec vectors..."
+
+    #Loading Word2Vec from gensim model
+    w2v = gensim.models.KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True)
     print "word2vec loaded!"
-    print "num words already in word2vec: " + str(len(w2v))
-    add_unknown_words(w2v, vocab)
-    W, word_idx_map = get_W(w2v)
-    rand_vecs = {}
-    add_unknown_words(rand_vecs, vocab)
-    W2, _ = get_W(rand_vecs)
+    model_vocab = w2v.vocab.keys()
+    print "num words already in word2vec: " + str(len(model_vocab))
+    #%%
+    #Adding unknown words from the vocab into the word vector
+    add_unknown_words(w2v, model_vocab, vocab)
+    #%%
+    #Getting the 300xlen(vocab) word matrix
+    W, word_idx_map = get_W(model_vocab, vocab, w2v)
     mairesse = get_mairesse_features(mairesse_file)
     cPickle.dump([revs, W, W2, word_idx_map, vocab, mairesse], open("essays_mairesse.p", "wb"))
     print "dataset created!"
