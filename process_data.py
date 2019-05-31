@@ -2,7 +2,7 @@ import numpy as np
 import theano
 import cPickle
 from collections import defaultdict
-import sys, re
+import re
 import pandas as pd
 import csv
 import gensim
@@ -72,20 +72,22 @@ def get_W(model_vocab, vocab, w2v, k=300):
     """
     Get word matrix. W[i] is the vector for word indexed by i
     """
-    vocab_size = len(model_vocab)
+    vocab_size = len(vocab)
     word_idx_map = dict()
     W = np.zeros(shape=(vocab_size+1, k), dtype=theano.config.floatX)
     W[0] = np.zeros(k, dtype=theano.config.floatX)
     i = 1
-    for word in model_vocab:
-        W[i] = w2v[word]
+    for word in vocab.keys():
+        try:
+            W[i] = w2v.vocab[word]
+        except:
+            W[i] = w2v[word]
         word_idx_map[word] = i
         i += 1
-         
+        
         #Printing how many words left to complete the matrix:
-        if i%500000 == 0:
-            print('Words Appended :' + str(i) + '/3,000,000')
-            break
+        if i%(vocab_size/5) == 0:
+            print('Words Added :' + str(i) + ' / ' + str(vocab_size))
     return W, word_idx_map
 
 def add_unknown_words(w2v, model_vocab, vocab, min_df=1, k=300):
@@ -103,7 +105,7 @@ def add_unknown_words(w2v, model_vocab, vocab, min_df=1, k=300):
             w2v.vocab[word] = np.random.uniform(-0.25,0.25,k)
         
         #This is not necessarily correct 
-        if j%(l/20) == 0:
+        if j%(l/5) == 0:
             print('Words Appended :' + str(j) + '/' + str(l))
         
 
